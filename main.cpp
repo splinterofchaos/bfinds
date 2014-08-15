@@ -53,12 +53,11 @@ int main(int argc, char **argv)
   if (!find.has_startpoint())
     find.startpoint(".");
 
-  char *match;
-  while(match = find.next()) {
-    if (strncmp(match, "./", 2) == 0)
+  std::string match;
+  while(find.next(match)) {
+    if (match[0] == '.' && match[1] == '/')
       match += 2;  // I hate that "./" prefix!
-    puts(match);
-    delete [] match;
+    puts(match.c_str());
 
     if (--count == 0)
       return 0;

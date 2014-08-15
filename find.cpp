@@ -72,16 +72,16 @@ bool Find::has_startpoint()
   return !unexplored.empty();
 }
 
-char *Find::next()
+bool Find::next(std::string &ret)
 {
   if (!target)
-    return NULL;
+    return false;
 
   // We may be returning from a previous call to next().
   // If so, don't reset the 'path'.
   if (path == NULL)
     if ((path = unexplored.pop()) == NULL)
-      return NULL;
+      return false;
 
   do {
     // We set 'd' to NULL every loop so we can tell the difference between
@@ -97,8 +97,12 @@ char *Find::next()
       if (ent->d_type == DT_DIR)
         unexplored.push(path_append(path, ent->d_name));
 
-      if (check(target, ent->d_name))
-        return path_append(path, ent->d_name);
+      if (check(target, ent->d_name)) {
+        char *p = path_append(path, ent->d_name);
+        ret = p;
+        delete [] p;
+        return true;
+      }
     }
 
     closedir(d);  // Safe if d is null.
@@ -108,7 +112,13 @@ char *Find::next()
     path = NULL;
   } while(path = unexplored.pop());
 
-  return NULL;
+  return false;
+}
+
+std::string Find::next()
+{
+  std::string ret;
+  next(ret);
 }
 
 bool is_dot(const char *path)

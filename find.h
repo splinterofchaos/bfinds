@@ -1,6 +1,8 @@
 
 #include <dirent.h>
 
+#include <string>
+
 struct Node
 {
   Node *child;       ///< The edge to search after this one.
@@ -30,9 +32,9 @@ struct Edges
  *    f.startpoint(".");
  *    f.startpoint("/dir");
  *    f.target = "foo";
- *    char *first = f.next();
+ *    std::string match;
+ *    while(f.next(match))
  *      ...
- *    delete [] first;
  */
 struct Find
 {
@@ -50,8 +52,10 @@ struct Find
 
   /// Executes the search.
   /// Call repeatedly to get more results.
-  /// Returns null after the search is exhausted.
-  char *next();
+  bool next(std::string &);
+
+  /// Overload of next() that returns "" instead of false.
+  std::string next();
 
 private:
   // The state of the search:
