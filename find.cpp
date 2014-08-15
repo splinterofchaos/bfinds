@@ -1,4 +1,5 @@
 
+#include <stdio.h>
 #include <string.h>
 
 #include "find.h"
@@ -50,6 +51,65 @@ void Edges::push(const char *path)
   } else {
     top->child = e;
     top = e;
+  }
+}
+
+Find::Find() : target(NULL), count(10000000)
+{
+}
+
+void Find::startpoint(const char *b)
+{
+  unexplored.push(strdup(b));
+}
+
+bool Find::has_startpoint()
+{
+  return !unexplored.empty();
+}
+
+static void print_match(const char *path, const char *name)
+{
+  // I hate that "./" prefix!
+  if (strncmp(path, "./", 2) == 0)
+    path += 2;
+  printf("%s/%s\n", path, name);
+}
+
+void Find::run()
+{
+  if (!target)
+    return;
+
+  const char *path;
+  while(path = unexplored.pop())
+  {
+    DIR *d = opendir(path);
+
+    // TODO: Under what situations will we need error reporting?
+    // Usually, it's just a boring 'permission denied'.
+    if (d == NULL) {
+      continue;
+    }
+
+    struct dirent* ent;
+    while (ent = readdir(d))
+    {
+      if (is_dot(ent->d_name))
+        continue;
+
+      if (check(target, ent->d_name)) {
+        print_match(path, ent->d_name);
+        if (--count == 0)
+          return;
+      }
+
+      if (ent->d_type == DT_DIR)
+        unexplored.push(path_append(path, ent->d_name));
+    }
+
+    closedir(d);
+    delete [] path;
   }
 }
 
