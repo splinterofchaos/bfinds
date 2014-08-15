@@ -40,6 +40,7 @@ struct Find
   Edges unexplored;    ///< Paths to explore.
 
   Find();
+  ~Find();
 
   /// Adds a starting point to 'unexplored'.
   void startpoint(const char *);

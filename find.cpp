@@ -57,6 +57,11 @@ Find::Find() : target(NULL), path(NULL), d(NULL)
 {
 }
 
+Find::~Find()
+{
+  delete [] path;
+}
+
 void Find::startpoint(const char *b)
 {
   unexplored.push(strdup(b));
@@ -100,6 +105,7 @@ char *Find::next()
     d = NULL;
 
     delete [] path;
+    path = NULL;
   } while(path = unexplored.pop());
 
   return NULL;
