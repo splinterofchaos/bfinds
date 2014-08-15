@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     unexplored.push(strdup("."));
 
   const char *path;
-  while((path = unexplored.pop()))
+  while(path = unexplored.pop())
   {
     DIR *d = opendir(path);
 
@@ -71,21 +71,18 @@ int main(int argc, char **argv)
       if (is_dot(ent->d_name))
         continue;
 
-      char *next = path_append(path, ent->d_name);
-
       if (check(target, ent->d_name)) {
-        bool rel = (strncmp(next, "./", 2) == 0);
-        puts(rel ? next + 2 : next);
-        if (--count == 0) {
-          delete [] next;
+        // I hate that "./" prefix!
+        bool rel = (strncmp(path, "./", 2) == 0);
+        const char *p = rel ? path + 2 : path;
+
+        printf("%s/%s\n", p, ent->d_name);
+        if (--count == 0)
           return 0;
-        }
       }
 
       if (ent->d_type == DT_DIR)
-        unexplored.push(next);
-      else
-        delete [] next;
+        unexplored.push(path_append(path, ent->d_name));
     }
 
     closedir(d);
