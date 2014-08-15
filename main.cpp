@@ -25,6 +25,7 @@ void usage(int ret)
 int main(int argc, char **argv)
 {
   Find find;
+  size_t count = 10000000;  ///< Stop after finding this many matches.
 
   for (char **arg = argv + 1; arg < argv + argc; arg++)
   {
@@ -39,7 +40,7 @@ int main(int argc, char **argv)
       char *opt = (*arg) + 1;
       if (isdigit(opt[0])) {
         char *end;
-        find.count = strtoul(opt, &end, 10);
+        count = strtoul(opt, &end, 10);
         if (*end != 0)
           usage(1, "unexpected token, '%s', after count (%s)", end, *arg);
       }
@@ -52,7 +53,16 @@ int main(int argc, char **argv)
   if (!find.has_startpoint())
     find.startpoint(".");
 
-  find.run();
+  char *match;
+  while(match = find.next()) {
+    if (strncmp(match, "./", 2) == 0)
+      match += 2;  // I hate that "./" prefix!
+    puts(match);
+    delete [] match;
+
+    if (--count == 0)
+      return 0;
+  }
 
   return 0;
 }

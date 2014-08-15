@@ -1,5 +1,4 @@
 
-#include <stdio.h>
 #include <string.h>
 
 #include "find.h"
@@ -54,7 +53,7 @@ void Edges::push(const char *path)
   }
 }
 
-Find::Find() : target(NULL), count(10000000)
+Find::Find() : target(NULL), path(NULL), d(NULL)
 {
 }
 
@@ -68,49 +67,42 @@ bool Find::has_startpoint()
   return !unexplored.empty();
 }
 
-static void print_match(const char *path, const char *name)
-{
-  // I hate that "./" prefix!
-  if (strncmp(path, "./", 2) == 0)
-    path += 2;
-  printf("%s/%s\n", path, name);
-}
-
-void Find::run()
+char *Find::next()
 {
   if (!target)
-    return;
+    return NULL;
 
-  const char *path;
-  while(path = unexplored.pop())
-  {
-    DIR *d = opendir(path);
+  // We may be returning from a previous call to next().
+  // If so, don't reset the 'path'.
+  if (path == NULL)
+    if ((path = unexplored.pop()) == NULL)
+      return NULL;
 
-    // TODO: Under what situations will we need error reporting?
-    // Usually, it's just a boring 'permission denied'.
-    if (d == NULL) {
-      continue;
-    }
+  do {
+    // We set 'd' to NULL every loop so we can tell the difference between
+    // starting a search and continuing one.
+    if (!d)
+      d = opendir(path);
 
     struct dirent* ent;
-    while (ent = readdir(d))
-    {
+    while (d && (ent = readdir(d))) {
       if (is_dot(ent->d_name))
         continue;
 
-      if (check(target, ent->d_name)) {
-        print_match(path, ent->d_name);
-        if (--count == 0)
-          return;
-      }
-
       if (ent->d_type == DT_DIR)
         unexplored.push(path_append(path, ent->d_name));
+
+      if (check(target, ent->d_name))
+        return path_append(path, ent->d_name);
     }
 
-    closedir(d);
+    closedir(d);  // Safe if d is null.
+    d = NULL;
+
     delete [] path;
-  }
+  } while(path = unexplored.pop());
+
+  return NULL;
 }
 
 bool is_dot(const char *path)

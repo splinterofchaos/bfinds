@@ -28,14 +28,16 @@ struct Edges
  * Usage:
  *    Find f;
  *    f.startpoint(".");
+ *    f.startpoint("/dir");
  *    f.target = "foo";
- *    f.run();
+ *    char *first = f.next();
+ *      ...
+ *    delete [] first;
  */
 struct Find
 {
   const char *target;  ///< File to search for.
   Edges unexplored;    ///< Paths to explore.
-  size_t count;        ///< Stop after finding this many matches.
 
   Find();
 
@@ -45,8 +47,15 @@ struct Find
   /// Returns true if 'unexplored' is not empty.
   bool has_startpoint();
 
-  /// Executes the search, printing results to stdout.
-  void run();
+  /// Executes the search.
+  /// Call repeatedly to get more results.
+  /// Returns null after the search is exhausted.
+  char *next();
+
+private:
+  // The state of the search:
+  const char *path;  ///< The path being expanded.
+  DIR *d;            ///< path's directory.
 };
 
 /// Checks if a file matches the target.
