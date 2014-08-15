@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -13,15 +14,18 @@
 
 #include "find.h"
 
+void usage(int ret, const char *fmt, ...)
+    __attribute__ ((noreturn)) __attribute__((format (printf, 2, 3)));
+
+void usage(int ret)
+{
+  usage(ret, NULL);
+}
+
 int main(int argc, char **argv)
 {
   const char *target = NULL;  ///< File to search for.
   Edges unexplored;           ///< Paths to explore.
-
-  if (argc == 1)
-    return 1;
-
-  int argi = 1;
 
   for (char **arg = argv + 1; arg < argv + argc; arg++)
   {
@@ -37,10 +41,8 @@ int main(int argc, char **argv)
     }
   }
 
-  if (target == NULL) {
-    fprintf(stderr, "usage: bfinds [FILE] [PATHS...]");
-    return 1;
-  }
+  if (target == NULL)
+    usage(0, "Please enter a file to search for.");
 
   if (unexplored.empty())
     unexplored.push(strdup("."));
@@ -81,5 +83,21 @@ int main(int argc, char **argv)
 
 
   return 0;
+}
+
+void usage(int ret, const char *fmt=NULL, ...)
+{
+  FILE *out = (ret == 0) ? stdout : stderr;
+
+  if (fmt) {
+    va_list va;
+    va_start(va, fmt);
+    vfprintf(out, fmt, va);
+    fprintf(out, "\n");
+    va_end(va);
+  }
+  fprintf(out, "usage: bfinds FILE [PATH...]\n");
+
+  exit(ret);
 }
 
