@@ -26,18 +26,25 @@ int main(int argc, char **argv)
 {
   const char *target = NULL;  ///< File to search for.
   Edges unexplored;           ///< Paths to explore.
+  size_t count = 10000000;    ///< Stop after finding this many matches.
 
   for (char **arg = argv + 1; arg < argv + argc; arg++)
   {
     // Consider the first non-option argument the target,
     // fallowed by directories to search.
-    if ((*arg)[0] == '-') {
-      // TODO: options
-    } else {
+    if ((*arg)[0] != '-') {
       if (target == NULL)
         target = *arg;
       else
         unexplored.push(strdup(*arg));
+    } else {
+      char *opt = (*arg) + 1;
+      if (isdigit(opt[0])) {
+        char *end;
+        count = strtoul(opt, &end, 10);
+        if (*end != 0)
+          usage(1, "unexpected token, '%s', after count (%s)", end, *arg);
+      }
     }
   }
 
@@ -69,6 +76,10 @@ int main(int argc, char **argv)
       if (check(target, ent->d_name)) {
         bool rel = (strncmp(next, "./", 2) == 0);
         puts(rel ? next + 2 : next);
+        if (--count == 0) {
+          delete [] next;
+          return 0;
+        }
       }
 
       if (ent->d_type == DT_DIR)
