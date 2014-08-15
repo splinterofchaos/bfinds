@@ -17,6 +17,8 @@ struct Edges
   Edges();
   ~Edges();
 
+  bool empty();
+
   const char *pop();
   void push(const char *path);
 };

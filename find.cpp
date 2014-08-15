@@ -22,10 +22,15 @@ Edges::~Edges()
   }
 }
 
+bool Edges::empty()
+{
+  return bot == NULL;
+}
+
 const char *Edges::pop()
 {
   const char *ret = NULL;
-  if (bot) {
+  if (!empty()) {
     ret = bot->path;
     Node *old = bot;
     bot = bot->child;

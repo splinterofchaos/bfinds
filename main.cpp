@@ -16,19 +16,34 @@
 int main(int argc, char **argv)
 {
   const char *target = NULL;  ///< File to search for.
+  Edges unexplored;           ///< Paths to explore.
 
   if (argc == 1)
     return 1;
 
-  // TODO: Allow more arguments.
-  if (argc == 2)
-    target = argv[1];
+  int argi = 1;
 
-  if (target == NULL)
+  for (char **arg = argv + 1; arg < argv + argc; arg++)
+  {
+    // Consider the first non-option argument the target,
+    // fallowed by directories to search.
+    if ((*arg)[0] == '-') {
+      // TODO: options
+    } else {
+      if (target == NULL)
+        target = *arg;
+      else
+        unexplored.push(strdup(*arg));
+    }
+  }
+
+  if (target == NULL) {
+    fprintf(stderr, "usage: bfinds [FILE] [PATHS...]");
     return 1;
+  }
 
-  Edges unexplored;
-  unexplored.push(strdup("."));
+  if (unexplored.empty())
+    unexplored.push(strdup("."));
 
   const char *path;
   while((path = unexplored.pop()))
