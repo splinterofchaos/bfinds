@@ -27,13 +27,24 @@ int main(int argc, char **argv)
   if (target == NULL)
     return 1;
 
+  char *cwd;
+  if (!(cwd = get_current_dir_name())) {
+    perror("cwd");
+    return 1;
+  }
+
   Edges unexplored;
-  unexplored.push(strdup("."));
+  unexplored.push(strdup(cwd));
 
   const char *path;
   while((path = unexplored.pop()))
   {
-    DIR *d = opendir(path);
+    if (chdir(path) == -1) {
+      // Probably can't cd here because it's not a dir.
+      continue;
+    }
+
+    DIR *d = opendir(".");
 
     // TODO: Under what situations will we need error reporting?
     // Usually, it's just a boring 'permission denied'.
@@ -64,6 +75,10 @@ int main(int argc, char **argv)
     delete [] path;
   }
 
+  if (chdir(cwd) == -1)
+    perror("couldn't cd back");
+
+  delete [] cwd;
 
   return 0;
 }
