@@ -83,42 +83,57 @@ bool Find::next(std::string &ret)
     if ((path = unexplored.pop()) == NULL)
       return false;
 
-  do {
-    // We set 'd' to NULL every loop so we can tell the difference between
-    // starting a search and continuing one.
-    if (!d)
-      d = opendir(path);
+  const char *p = NULL;
+  for (; !p && path; path = unexplored.pop())
+    p = in_path();
 
-    struct dirent* ent;
-    while (d && (ent = readdir(d))) {
-      if (is_dot(ent->d_name))
-        continue;
+  if (p) {
+    ret = p;
+    delete [] p;
+  }
 
-      if (ent->d_type == DT_DIR)
-        unexplored.push(path_append(path, ent->d_name));
-
-      if (check(target, ent->d_name)) {
-        char *p = path_append(path, ent->d_name);
-        ret = p;
-        delete [] p;
-        return true;
-      }
-    }
-
-    closedir(d);  // Safe if d is null.
-    d = NULL;
-
-    delete [] path;
-    path = NULL;
-  } while(path = unexplored.pop());
-
-  return false;
+  return p != NULL;
 }
 
 std::string Find::next()
 {
   std::string ret;
   next(ret);
+}
+
+const char *Find::in_path()
+{
+  // We set 'd' to NULL every loop so we can tell the difference between
+  // starting a search and continuing one.
+  if (!d)
+    d = opendir(path);
+
+  struct dirent* ent;
+  while (d && (ent = readdir(d)))
+    if (const char *p = in_ent(ent))
+      return p;
+
+  closedir(d);  // Safe even if d is null.
+  d = NULL;
+
+  delete [] path;
+  path = NULL;
+
+  return NULL;
+}
+
+const char *Find::in_ent(struct dirent *ent)
+{
+  if (is_dot(ent->d_name))
+    return NULL;
+
+  if (ent->d_type == DT_DIR)
+    unexplored.push(path_append(path, ent->d_name));
+
+  if (check(target, ent->d_name))
+    return path_append(path, ent->d_name);
+
+  return NULL;
 }
 
 bool is_dot(const char *path)

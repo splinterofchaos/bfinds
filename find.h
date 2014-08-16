@@ -61,6 +61,9 @@ private:
   // The state of the search:
   const char *path;  ///< The path being expanded.
   DIR *d;            ///< path's directory.
+
+  const char *in_path();  ///< Increments `d`.
+  const char *in_ent(struct dirent *);
 };
 
 /// Checks if a file matches the target.
