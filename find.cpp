@@ -3,54 +3,18 @@
 
 #include "find.h"
 
-Node::Node(const char *path) : child(NULL), path(path)
-{
-}
-
-/* Edges members */
-Edges::Edges()
-{
-  top = bot = NULL;
-}
-
-Edges::~Edges()
-{
-  while (bot) {
-    // Destruct called with items left.
-    // Destroying the paths becomes our job.
-    delete [] pop();
+static const char *pop(Edges &es) {
+  const char *path = NULL;
+  if (es.size()) {
+    path = es.front();
+    es.pop_front();
   }
+  return path;
 }
 
-bool Edges::empty()
+static void push(Edges &es, const char *path)
 {
-  return bot == NULL;
-}
-
-const char *Edges::pop()
-{
-  const char *ret = NULL;
-  if (!empty()) {
-    ret = bot->path;
-    Node *old = bot;
-    bot = bot->child;
-    delete old;
-  }
-
-  return ret;
-}
-
-void Edges::push(const char *path)
-{
-  Node *e = new Node(path);
-
-  // bot will be null if every edge has been popped.
-  if (!bot) {
-    bot = top = e;
-  } else {
-    top->child = e;
-    top = e;
-  }
+  es.push_back(path);
 }
 
 Find::Find() : target(NULL), path(NULL), d(NULL)
@@ -64,7 +28,7 @@ Find::~Find()
 
 void Find::startpoint(const char *b)
 {
-  unexplored.push(strdup(b));
+  push(unexplored, strdup(b));
 }
 
 bool Find::has_startpoint()
@@ -79,12 +43,11 @@ bool Find::next(std::string &ret)
 
   // We may be returning from a previous call to next().
   // If so, don't reset the 'path'.
-  if (path == NULL)
-    if ((path = unexplored.pop()) == NULL)
-      return false;
+  if (path == NULL && unexplored.size())
+    path = pop(unexplored);
 
   const char *p = NULL;
-  for (; !p && path; path = unexplored.pop())
+  for (; !p && path; path = pop(unexplored))
     p = in_path();
 
   if (p) {
@@ -128,7 +91,7 @@ const char *Find::in_ent(struct dirent *ent)
     return NULL;
 
   if (ent->d_type == DT_DIR)
-    unexplored.push(path_append(path, ent->d_name));
+    push(unexplored, path_append(path, ent->d_name));
 
   if (check(target, ent->d_name))
     return path_append(path, ent->d_name);

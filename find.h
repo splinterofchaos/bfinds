@@ -1,29 +1,10 @@
 
 #include <dirent.h>
 
+#include <deque>
 #include <string>
 
-struct Node
-{
-  Node *child;       ///< The edge to search after this one.
-  const char *path;  ///< What gets searched when expanding this node.
-
-  Node(const char *path);
-};
-
-struct Edges
-{
-  Node *top;  ///< append here
-  Node *bot;  ///< pop here
-
-  Edges();
-  ~Edges();
-
-  bool empty();
-
-  const char *pop();
-  void push(const char *path);
-};
+typedef std::deque<const char *> Edges;
 
 /*
  * Search engine and context.
