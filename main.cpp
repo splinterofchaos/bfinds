@@ -55,9 +55,10 @@ int main(int argc, char **argv)
 
   std::string match;
   while(find.next(match)) {
+    size_t off = 0;
     if (match[0] == '.' && match[1] == '/')
-      match += 2;  // I hate that "./" prefix!
-    puts(match.c_str());
+      off = 2;  // I hate that "./" prefix!
+    puts(match.c_str() + off);
 
     if (--count == 0)
       return 0;

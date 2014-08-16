@@ -1,5 +1,6 @@
 
 #include <dirent.h>
+#include <pthread.h>
 
 #include <deque>
 #include <string>
@@ -31,6 +32,7 @@ struct Find
   /// Returns true if 'unexplored' is not empty.
   bool has_startpoint();
 
+
   /// Executes the search.
   /// Call repeatedly to get more results.
   bool next(std::string &);
@@ -45,6 +47,13 @@ private:
 
   const char *in_path();  ///< Increments `d`.
   const char *in_ent(struct dirent *);
+
+  static int *search(Find *);
+  int threadOk;
+  int fd[2];
+  FILE *fl[2];
+  pthread_cond_t startSearch;
+  pthread_t searcher;
 };
 
 /// Checks if a file matches the target.
