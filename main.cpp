@@ -52,6 +52,8 @@ int main(int argc, char **argv)
         if (++arg >= argv + argc || (*arg)[0] == '-')
           usage(1, "-c(ommand) requires an argument");
         cmd = *arg;
+      } else {
+        usage(1, "unrecognized option: %s", opt);
       }
     }
   }
@@ -67,11 +69,10 @@ int main(int argc, char **argv)
     if (match[0] == '.' && match[1] == '/')
       match += 2;  // I hate that "./" prefix!
 
-    // TODO: Do we need to print anything when given a command?
-    puts(match.c_str());
-
     if (cmd)
       command(cmd, match);
+    else
+      puts(match.c_str());
 
     if (--count == 0)
       return 0;
@@ -110,7 +111,14 @@ void usage(int ret, const char *fmt=NULL, ...)
     fprintf(out, "\n");
     va_end(va);
   }
-  fprintf(out, "usage: bfinds FILE [PATH...]\n");
+
+  fprintf(out, "usage: bfinds [options] file [path...]\n");
+  fprintf(out, "\n");
+  fprintf(out, "options:\n");
+  fprintf(out, "\t--command <cmd> Executes <cmd> for every instance of <file>.\n");
+  fprintf(out, "\t  or -c <cmd>   If <cmd> contains a percent (%), the <file> is inserted there.\n");
+  fprintf(out, "\t                Found files will not be printed. (Useful for piping.)\n");
+  fprintf(out, "\t-<N>            Stop searching after finding <N> matches.\n");
 
   exit(ret);
 }
