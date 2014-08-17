@@ -1,11 +1,16 @@
 
 #include <dirent.h>
 #include <pthread.h>
+#include <semaphore.h>
 
+#include <list>
 #include <deque>
 #include <string>
 
+typedef std::pair<const char *, const char *> Leaf;
+
 typedef std::deque<const char *> Edges;
+typedef std::list<Leaf>         Waiting;
 
 /*
  * Search engine and context.
@@ -22,6 +27,8 @@ struct Find
 {
   const char *target;  ///< File to search for.
   Edges unexplored;    ///< Paths to explore.
+  Waiting toMatch;     ///< Nodes waiting to be matched.
+  std::list<const char *> paths;
 
   Find();
   ~Find();
@@ -49,10 +56,10 @@ private:
   const char *in_ent(struct dirent *);
 
   static int *search(Find *);
-  int threadOk;
-  int fd[2];
-  FILE *fl[2];
-  pthread_cond_t startSearch;
+  bool searchOver;
+  sem_t sToMatch;
+  pthread_cond_t startCond;
+  pthread_mutex_t lock;
   pthread_t searcher;
 };
 

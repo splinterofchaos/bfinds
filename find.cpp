@@ -26,35 +26,36 @@ int *Find::search(Find *self)
   for (; path; path = pop(self->unexplored))
   {
     DIR *d = opendir(path);
-
-    fprintf(self->fl[1], "\t%s\n", path);
+    if (d)
+      self->paths.push_back(path);  // TODO: Free me!
 
     struct dirent* ent;
     while (d && (ent = readdir(d))) {
-      fprintf(self->fl[1], "%s\n", ent->d_name);
+      if (is_dot(ent->d_name)) {
+        continue;
+      }
 
-      if (ent->d_type == DT_DIR && !is_dot(ent->d_name))
+      self->toMatch.emplace_back(self->paths.back(), strdup(ent->d_name));
+      
+      sem_post(&self->sToMatch);
+
+      if (ent->d_type == DT_DIR)
         push(self->unexplored, path_append(path, ent->d_name));
     }
 
     closedir(d);
-    delete [] path;
   }
 
-  close(self->fd[1]);  // Signal the parent thread to stop reading.
-  self->threadOk = 0;
+  self->searchOver = true;
 }
 
 Find::Find() : target(NULL), path(NULL), d(NULL)
 {
-  threadOk = (pipe(fd) >= 0);
+  sem_init(&sToMatch,   0, 0);
+  pthread_cond_init(&startCond, NULL);
+  pthread_mutex_init(&lock, NULL);
 
-  if (threadOk) {
-    fl[0] = fdopen(fd[0], "r");
-    fl[1] = fdopen(fd[1], "w");
-    if (! (fl[0] && fl[1]))
-      perror("fdopen");
-  }
+  searchOver = false;
 }
 
 Find::~Find()
@@ -66,6 +67,8 @@ Find::~Find()
 void Find::startpoint(const char *b)
 {
   push(unexplored, strdup(b));
+    void * (*vf)(void *) = (void *(*)(void *))search;
+    pthread_create(&searcher, NULL, vf, this);
 }
 
 bool Find::has_startpoint()
@@ -85,38 +88,33 @@ size_t read_line(FILE *f, char buf[PATH_MAX])
 
 bool Find::next(std::string &ret)
 {
-  if (threadOk == 1) {
-    pthread_cond_init(&startSearch, NULL);
 
-    void * (*vf)(void *) = (void *(*)(void *))search;
-    if (pthread_create(&searcher, NULL, vf, this) == 0)
-      threadOk = 2;
-  }
+  static bool init = false;
+  if (!init) {
+  } init = true;
 
-  size_t read;
-  char *line = new char[PATH_MAX];
-  size_t len = 0;
-  while (threadOk == 2 && (read = read_line(fl[0], line)) != -1)
+
+  pthread_mutex_lock(&lock);
+  pthread_cond_signal(&startCond);
+  pthread_mutex_unlock(&lock);
+
+  while (unexplored.size() || toMatch.size())
   {
-    if (! read || is_dot(line))
-      continue;
+    sem_wait(&sToMatch);
+    while (!toMatch.size())
+      sleep(0);
+  pthread_mutex_lock(&lock);
+    Leaf l = toMatch.front();
+    toMatch.pop_front();
+  pthread_mutex_unlock(&lock);
 
-    if (line[0] == '\t') {
-      path = strdup(line + 1);
-      continue;
-    }
-
-    if (check(target, line)) {
-    //puts(path_tail(line));
-    //if (check(target, path_tail(line))) {
-      ret = path;
+    if (check(target, l.second)) {
+      ret = l.first;
       ret.push_back('/');
-      ret += line;
+      ret += l.second;
       return true;
     }
   }
-
-  delete [] line;
 
   return false;
 
