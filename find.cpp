@@ -87,11 +87,11 @@ const char *Find::in_path()
 
 const char *Find::in_ent(struct dirent *ent)
 {
-  if (is_dot(ent->d_name))
-    return NULL;
-
-  if (ent->d_type == DT_DIR)
+  if (ent->d_type == DT_DIR) {
+    if (is_dot(ent->d_name))
+      return NULL;
     push(unexplored, path_append(path, ent->d_name));
+  }
 
   if (check(target, ent->d_name))
     return path_append(path, ent->d_name);
