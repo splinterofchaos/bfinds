@@ -115,23 +115,21 @@ int command(const char *cmd, const std::string &match)
 
 void usage(int ret, const char *fmt=NULL, ...)
 {
-  FILE *out = (ret == 0) ? stdout : stderr;
-
   if (fmt) {
     va_list va;
     va_start(va, fmt);
-    vfprintf(out, fmt, va);
-    fprintf(out, "\n");
+    vfprintf(stderr, fmt, va);
+    fprintf(stderr, "\n");
     va_end(va);
   }
 
-  fprintf(out, "usage: bfinds [options] file [path...]\n");
-  fprintf(out, "\n");
-  fprintf(out, "options:\n");
-  fprintf(out, "\t--command <cmd> Executes <cmd> for every instance of <file>.\n");
-  fprintf(out, "\t  or -c <cmd>   If <cmd> contains a percent (%), the <file> is inserted there.\n");
-  fprintf(out, "\t                Found files will not be printed. (Useful for piping.)\n");
-  fprintf(out, "\t-<N>            Stop searching after finding <N> matches.\n");
+  puts("usage: bfinds [options] file [path...]");
+  puts("");
+  puts("options:");
+  puts("\t--command <cmd> Executes <cmd> for every instance of <file>.");
+  puts("\t  or -c <cmd>   If <cmd> contains a percent (%), the <file> is inserted there.");
+  puts("\t                Found files will not be printed. (Useful for piping.)");
+  puts("\t-<N>            Stop searching after finding <N> matches.");
 
   exit(ret);
 }
