@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "find.h"
+#include "match.h"
 
 static const char *pop(Edges &es) {
   const char *path = NULL;
@@ -26,6 +27,10 @@ Find::~Find()
   delete [] path;
 }
 
+void Find::match_by(match::Gen g) {
+  matchGenerator = g;
+}
+
 void Find::startpoint(const char *b)
 {
   push(unexplored, strdup(b));
@@ -40,6 +45,8 @@ bool Find::next(std::string &ret)
 {
   if (!target)
     return false;
+
+  check = matchGenerator(target);
 
   // We may be returning from a previous call to next().
   // If so, don't reset the 'path'.
@@ -87,7 +94,7 @@ const char *Find::in_ent(struct dirent *ent)
     push(unexplored, path_append(path, ent->d_name));
   }
 
-  if (check(target, ent->d_name))
+  if (check(ent->d_name))
     return path_append(path, ent->d_name);
 
   return NULL;
@@ -97,12 +104,6 @@ bool is_dot(const char *path)
 {
   return path[0] == '.' && 
     (path[1] == 0 || (path[1] == '.' && path[2] == 0));
-}
-
-bool check(const char *a, const char *b)
-{
-  // TODO: Matching is more than simple equality.
-  return strcmp(a, b) == 0;
 }
 
 const char *path_tail(const char *p)

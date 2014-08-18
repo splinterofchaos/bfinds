@@ -32,6 +32,7 @@ int command(const char *cmd, const std::vector<std::string> &matches);
 int main(int argc, char **argv)
 {
   Find find;
+
   size_t count = 10000000;  ///< Stop after finding this many matches.
   const char *cmd = NULL;   ///< Execute this per match.
   const char *exec = NULL;  ///< Send every match to this when done.
@@ -63,6 +64,14 @@ int main(int argc, char **argv)
         exec = *arg;
       } else if (strcmp(opt, "e") == 0 || strcmp(opt, "-edit") == 0) {
         edit = true;
+      } else if (strcmp(opt, "P") == 0 || strcmp(opt, "-pre") == 0) {
+        find.match_by(match::prefix);
+      } else if (strcmp(opt, "F") == 0 || strcmp(opt, "-full") == 0) {
+        find.match_by(match::eq);
+      } else if (strcmp(opt, "C") == 0 || strcmp(opt, "-contains") == 0) {
+        find.match_by(match::contains);
+      } else if (strcmp(opt, "R") == 0 || strcmp(opt, "-regex") == 0) {
+        find.match_by(match::regex);
       } else {
         usage(1, "unrecognized option: %s", opt);
       }
@@ -156,6 +165,10 @@ void usage(int ret, const char *fmt=NULL, ...)
   puts("usage: bfinds [options] file [path...]");
   puts("");
   puts("options:");
+  puts("\t--pre | -P (defualt) Match by prefix.");
+  puts("\t--full | -F     Match by full-name comparison.");
+  puts("\t--regex | -R    Match by regex.");
+  puts("\t--contains | -C Match if a filename contains the target.");
   puts("\t--command <cmd> Executes <cmd> for every instance of <file>.");
   puts("\t  or -c <cmd>   If <cmd> contains a percent (%), the <file> is inserted there.");
   puts("\t                Found files will not be printed. (Useful for piping.)");

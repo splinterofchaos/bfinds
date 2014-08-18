@@ -3,6 +3,9 @@
 
 #include <deque>
 #include <string>
+#include <memory>
+
+#include "match.h"
 
 #ifndef FIND_H
 #define FIND_H
@@ -28,6 +31,9 @@ struct Find
   Find();
   ~Find();
 
+  /// Sets the match generator. (By default, match::prefix.)
+  void match_by(match::Gen);
+
   /// Adds a starting point to 'unexplored'.
   void startpoint(const char *);
 
@@ -39,6 +45,9 @@ struct Find
   bool next(std::string &);
 
 private:
+  match::Gen matchGenerator = match::prefix;
+  match::Matcher check;  ///< Initialized by next().
+
   // The state of the search:
   const char *path;  ///< The path being expanded.
   DIR *d;            ///< path's directory.
@@ -46,9 +55,6 @@ private:
   const char *in_path();  ///< Increments `d`.
   const char *in_ent(struct dirent *);
 };
-
-/// Checks if a file matches the target.
-bool check(const char *, const char *fname);
 
 /// Checks for "." and "..".
 bool is_dot(const char *);
