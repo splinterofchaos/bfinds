@@ -35,6 +35,7 @@ int main(int argc, char **argv)
   size_t count = 10000000;  ///< Stop after finding this many matches.
   const char *cmd = NULL;   ///< Execute this per match.
   const char *exec = NULL;  ///< Send every match to this when done.
+  bool edit = false;        ///< Optionally open files for editing.
 
   for (char **arg = argv + 1; arg < argv + argc; arg++)
   {
@@ -60,6 +61,8 @@ int main(int argc, char **argv)
         if (++arg >= argv + argc || (*arg)[0] == '-')
           usage(1, "%s requires an argument", *arg);
         exec = *arg;
+      } else if (strcmp(opt, "e") == 0 || strcmp(opt, "-edit") == 0) {
+        edit = true;
       } else {
         usage(1, "unrecognized option: %s", opt);
       }
@@ -98,6 +101,15 @@ int main(int argc, char **argv)
 
     if (--count == 0)
       break;
+  }
+
+  if (edit) {
+    const char * editor = getenv("VISUAL");
+    if (!editor) editor = getenv("EDITOR");
+    if (!editor) editor = "vi";  // TODO: We /could/ check if different 
+                                 // editors exist.
+    command(editor, matches);    // TODO: And we could be smarter about
+                                 // the syntax of sending files to edit.
   }
 
   if (exec)
