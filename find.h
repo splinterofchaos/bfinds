@@ -4,6 +4,9 @@
 #include <deque>
 #include <string>
 
+#ifndef FIND_H
+#define FIND_H
+
 typedef std::deque<const char *> Edges;
 
 /*
@@ -35,9 +38,6 @@ struct Find
   /// Call repeatedly to get more results.
   bool next(std::string &);
 
-  /// Overload of next() that returns "" instead of false.
-  std::string next();
-
 private:
   // The state of the search:
   const char *path;  ///< The path being expanded.
@@ -57,4 +57,6 @@ const char *path_tail(const char *p);
 char *path_tail(char *p);
 
 char *path_append(const char *from, const char *to);
+
+#endif
 

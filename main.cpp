@@ -13,6 +13,9 @@
 #include <memory>
 #include <algorithm>
 
+#include <thread>
+#include <future>
+
 #include "find.h"
 
 void usage(int ret, const char *fmt, ...)
@@ -64,8 +67,18 @@ int main(int argc, char **argv)
   if (!find.has_startpoint())
     find.startpoint(".");
 
-  std::string match;
-  while(find.next(match)) {
+  // We will run the actual file search in another thread in case the user
+  // supplies the -c option; the command can execute while we find the next
+  // file.
+  std::string futMatch;
+  auto do_match = [&]{ return find.next(futMatch); };
+  std::future<bool> found = std::async(do_match);
+
+  while(found.get()) {
+    std::string match = futMatch;
+    
+    found = std::async(std::launch::async, do_match);
+
     if (match[0] == '.' && match[1] == '/')
       match += 2;  // I hate that "./" prefix!
 

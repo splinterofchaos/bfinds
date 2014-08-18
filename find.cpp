@@ -58,12 +58,6 @@ bool Find::next(std::string &ret)
   return p != NULL;
 }
 
-std::string Find::next()
-{
-  std::string ret;
-  next(ret);
-}
-
 const char *Find::in_path()
 {
   // We set 'd' to NULL every loop so we can tell the difference between
