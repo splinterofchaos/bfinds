@@ -27,13 +27,14 @@ void usage(int ret)
 }
 
 /// Executes a command for "-c cmd".
-int command(const char *cmd, const std::string &match);
+int command(const char *cmd, const std::vector<std::string> &matches);
 
 int main(int argc, char **argv)
 {
   Find find;
   size_t count = 10000000;  ///< Stop after finding this many matches.
-  const char *cmd = NULL;   ///< Execute this on every file.
+  const char *cmd = NULL;   ///< Execute this per match.
+  const char *exec = NULL;  ///< Send every match to this when done.
 
   for (char **arg = argv + 1; arg < argv + argc; arg++)
   {
@@ -55,6 +56,10 @@ int main(int argc, char **argv)
         if (++arg >= argv + argc || (*arg)[0] == '-')
           usage(1, "-c(ommand) requires an argument");
         cmd = *arg;
+      } else if (strcmp(opt, "x") == 0 || strcmp(opt, "-execute") == 0) {
+        if (++arg >= argv + argc || (*arg)[0] == '-')
+          usage(1, "%s requires an argument", *arg);
+        exec = *arg;
       } else {
         usage(1, "unrecognized option: %s", opt);
       }
@@ -74,43 +79,56 @@ int main(int argc, char **argv)
   auto do_match = [&]{ return find.next(futMatch); };
   std::future<bool> found = std::async(do_match);
 
+  std::vector<std::string> matches;  // Store matches here.
+
   while(found.get()) {
     std::string match = futMatch;
     
     found = std::async(std::launch::async, do_match);
 
     if (match[0] == '.' && match[1] == '/')
-      match += 2;  // I hate that "./" prefix!
+      match.erase(0, 2);  // I hate that "./" prefix!
 
     if (cmd)
-      command(cmd, match);
+      command(cmd, {match});
     else
       puts(match.c_str());
 
+    matches.push_back(match);
+
     if (--count == 0)
-      return 0;
+      break;
   }
+
+  if (exec)
+    command(exec, matches);
 
   return 0;
 }
 
-int command(const char *cmd, const std::string &match)
+std::string concat(const std::vector<std::string> &);
+
+int command(const char *cmd, const std::vector<std::string> &matches)
 {
-  size_t cmdLen = strlen(cmd);
-  size_t size = cmdLen + match.size() + 3;
+  std::string run;  // The program to run.
 
-  // We can't use std::string /and/ fill it with snprintf, so...
-  std::unique_ptr<char[]> exec(new char[size]);
+  // If the command has a %, expand the matches there; else at the end.
+  if (const char *wild = strchr(cmd, '%'))
+    run = std::string(cmd, wild) + concat(matches) + (wild + 1);
+  else
+    run = cmd + (" " + concat(matches));
 
-  if (const char *wild = strchr(cmd, '%')) {
-    // Expand "prog -a % -b" to "prog -a <match> -b".
-    std::string fmt = std::string(cmd, wild) + "%s" + (wild + 1);
-    snprintf(exec.get(), size, fmt.c_str(), match.c_str());
-  } else {
-    snprintf(exec.get(), size, "%s %s", cmd, match.c_str());
-  }
+  return system(run.c_str());
+}
 
-  return system(exec.get());
+std::string concat(const std::vector<std::string> &vs)
+{
+  std::string ret;
+  for (const std::string &s : vs)
+    ret += s + ' ';
+  if (ret.size() > 1)
+    ret.erase(ret.size() - 1);  // Trailing whitespace.
+  return std::move(ret);
 }
 
 void usage(int ret, const char *fmt=NULL, ...)
@@ -130,6 +148,8 @@ void usage(int ret, const char *fmt=NULL, ...)
   puts("\t  or -c <cmd>   If <cmd> contains a percent (%), the <file> is inserted there.");
   puts("\t                Found files will not be printed. (Useful for piping.)");
   puts("\t-<N>            Stop searching after finding <N> matches.");
+  puts("\t--execute <cmd> Like --command, only it is run after the entire search");
+  puts("\t  or -x <cmd>   and sends every file all at once.");
 
   exit(ret);
 }
