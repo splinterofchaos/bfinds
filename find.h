@@ -19,8 +19,8 @@ typedef std::deque<const char *> Edges;
  */
 struct Find
 {
-  const char *target;  ///< File to search for.
-  Edges unexplored;    ///< Paths to explore.
+  const char *target = nullptr;  ///< File to search for.
+  Edges unexplored;              ///< Paths to explore.
 
   Find();
   ~Find();
@@ -40,8 +40,8 @@ struct Find
 
 private:
   // The state of the search:
-  const char *path;  ///< The path being expanded.
-  DIR *d;            ///< path's directory.
+  const char *path = nullptr;  ///< The path being expanded.
+  DIR *d = nullptr;            ///< path's directory.
 
   const char *in_path();  ///< Increments `d`.
   const char *in_ent(struct dirent *);

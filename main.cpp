@@ -20,7 +20,7 @@ void usage(int ret, const char *fmt, ...)
 
 void usage(int ret)
 {
-  usage(ret, NULL);
+  usage(ret, nullptr);
 }
 
 /// Executes a command for "-c cmd".
@@ -30,14 +30,14 @@ int main(int argc, char **argv)
 {
   Find find;
   size_t count = 10000000;  ///< Stop after finding this many matches.
-  const char *cmd = NULL;   ///< Execute this on every file.
+  const char *cmd = nullptr;   ///< Execute this on every file.
 
   for (char **arg = argv + 1; arg < argv + argc; arg++)
   {
     // Consider the first non-option argument the target,
     // fallowed by directories to search.
     if ((*arg)[0] != '-') {
-      if (find.target == NULL)
+      if (find.target == nullptr)
         find.target = *arg;
       else
         find.startpoint(*arg);
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
     }
   }
 
-  if (find.target == NULL)
+  if (find.target == nullptr)
     usage(0, "Please enter a file to search for.");
 
   if (!find.has_startpoint())
@@ -100,7 +100,7 @@ int command(const char *cmd, const std::string &match)
   return system(exec.get());
 }
 
-void usage(int ret, const char *fmt=NULL, ...)
+void usage(int ret, const char *fmt=nullptr, ...)
 {
   FILE *out = (ret == 0) ? stdout : stderr;
 

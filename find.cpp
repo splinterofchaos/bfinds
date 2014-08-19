@@ -4,7 +4,7 @@
 #include "find.h"
 
 static const char *pop(Edges &es) {
-  const char *path = NULL;
+  const char *path = nullptr;
   if (es.size()) {
     path = es.front();
     es.pop_front();
@@ -17,7 +17,7 @@ static void push(Edges &es, const char *path)
   es.push_back(path);
 }
 
-Find::Find() : target(NULL), path(NULL), d(NULL)
+Find::Find()
 {
 }
 
@@ -43,10 +43,10 @@ bool Find::next(std::string &ret)
 
   // We may be returning from a previous call to next().
   // If so, don't reset the 'path'.
-  if (path == NULL && unexplored.size())
+  if (path == nullptr && unexplored.size())
     path = pop(unexplored);
 
-  const char *p = NULL;
+  const char *p = nullptr;
   for (; path; path = pop(unexplored)) {
     if (p = in_path()) {
       ret = p;
@@ -66,7 +66,7 @@ std::string Find::next()
 
 const char *Find::in_path()
 {
-  // We set 'd' to NULL every loop so we can tell the difference between
+  // We set 'd' to nullptr every loop so we can tell the difference between
   // starting a search and continuing one.
   if (!d)
     d = opendir(path);
@@ -77,26 +77,26 @@ const char *Find::in_path()
       return p;
 
   closedir(d);  // Safe even if d is null.
-  d = NULL;
+  d = nullptr;
 
   delete [] path;
-  path = NULL;
+  path = nullptr;
 
-  return NULL;
+  return nullptr;
 }
 
 const char *Find::in_ent(struct dirent *ent)
 {
   if (ent->d_type == DT_DIR) {
     if (is_dot(ent->d_name))
-      return NULL;
+      return nullptr;
     push(unexplored, path_append(path, ent->d_name));
   }
 
   if (check(target, ent->d_name))
     return path_append(path, ent->d_name);
 
-  return NULL;
+  return nullptr;
 }
 
 bool is_dot(const char *path)
