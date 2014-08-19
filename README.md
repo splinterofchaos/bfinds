@@ -4,7 +4,7 @@ bfinds
 
 bfinds is stupid. It doesn't know how to fallow links, match by regex, know what a `stat_t` or `ino_t` is, or do any error reporting. It thinks maintaining a list of visited directories is a waste of time. Because of its stupidity, bfinds much faster than Gnu's find.
 
-On my computer, today, with my current directory tree, running 'find / -name foo' will take 3.9 to 4 seconds to complete. 'bfinds foo /' will take between 1.5 and 1.7 seconds.
+On my computer, today, with my current directory tree, running 'find / -name foo' will take 3.9 to 4 seconds to complete. 'bfinds foo /' will take between 1.7 and 1.9 seconds.
 
 Faster does not mean better! bfinds is an experiment and lacks most of find's features, ones that *some* people probably actually use. However, 99% of the time when I need to find a file, there aren't any links, I don't want "permission denied" errors filling the screen, and none of find's numerous options seem necessary. bfinds is not a find replacement, but it does the job.
 

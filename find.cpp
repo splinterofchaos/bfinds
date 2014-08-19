@@ -47,15 +47,15 @@ bool Find::next(std::string &ret)
     path = pop(unexplored);
 
   const char *p = NULL;
-  for (; !p && path; path = pop(unexplored))
-    p = in_path();
-
-  if (p) {
-    ret = p;
-    delete [] p;
+  for (; path; path = pop(unexplored)) {
+    if (p = in_path()) {
+      ret = p;
+      delete [] p;
+      break;  // Don't let the next path be popped!
+    }
   }
 
-  return p != NULL;
+  return p;
 }
 
 std::string Find::next()
