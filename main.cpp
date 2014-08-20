@@ -13,6 +13,9 @@
 #include <memory>
 #include <algorithm>
 
+#include <thread>
+#include <future>
+
 #include "find.h"
 
 void usage(int ret, const char *fmt, ...)
@@ -24,13 +27,16 @@ void usage(int ret)
 }
 
 /// Executes a command for "-c cmd".
-int command(const char *cmd, const std::string &match);
+int command(const char *cmd, const std::vector<std::string> &matches);
 
 int main(int argc, char **argv)
 {
   Find find;
-  size_t count = 10000000;  ///< Stop after finding this many matches.
+
+  size_t count = 10000000;     ///< Stop after finding this many matches.
   const char *cmd = nullptr;   ///< Execute this on every file.
+  const char *exec = nullptr;  ///< Send every match to this when done.
+  bool edit = false;           ///< Optionally open files for editing.
 
   for (char **arg = argv + 1; arg < argv + argc; arg++)
   {
@@ -52,6 +58,20 @@ int main(int argc, char **argv)
         if (++arg >= argv + argc || (*arg)[0] == '-')
           usage(1, "-c(ommand) requires an argument");
         cmd = *arg;
+      } else if (strcmp(opt, "x") == 0 || strcmp(opt, "-execute") == 0) {
+        if (++arg >= argv + argc || (*arg)[0] == '-')
+          usage(1, "%s requires an argument", *arg);
+        exec = *arg;
+      } else if (strcmp(opt, "e") == 0 || strcmp(opt, "-edit") == 0) {
+        edit = true;
+      } else if (strcmp(opt, "P") == 0 || strcmp(opt, "-pre") == 0) {
+        find.match_by(match::prefix);
+      } else if (strcmp(opt, "F") == 0 || strcmp(opt, "-full") == 0) {
+        find.match_by(match::eq);
+      } else if (strcmp(opt, "C") == 0 || strcmp(opt, "-contains") == 0) {
+        find.match_by(match::contains);
+      } else if (strcmp(opt, "R") == 0 || strcmp(opt, "-regex") == 0) {
+        find.match_by(match::regex);
       } else {
         usage(1, "unrecognized option: %s", opt);
       }
@@ -64,61 +84,97 @@ int main(int argc, char **argv)
   if (!find.has_startpoint())
     find.startpoint(".");
 
-  std::string match;
-  while(find.next(match)) {
+  // We will run the actual file search in another thread in case the user
+  // supplies the -c option; the command can execute while we find the next
+  // file.
+  std::string futMatch;
+  auto do_match = [&]{ return find.next(futMatch); };
+  std::future<bool> found = std::async(do_match);
+
+  std::vector<std::string> matches;  // Store matches here.
+
+  while(found.get()) {
+    std::string match = futMatch;
+    
+    found = std::async(std::launch::async, do_match);
+
     if (match[0] == '.' && match[1] == '/')
-      match += 2;  // I hate that "./" prefix!
+      match.erase(0, 2);  // I hate that "./" prefix!
 
     if (cmd)
-      command(cmd, match);
+      command(cmd, {match});
     else
       puts(match.c_str());
 
+    matches.push_back(match);
+
     if (--count == 0)
-      return 0;
+      break;
   }
+
+  if (edit) {
+    const char * editor = getenv("VISUAL");
+    if (!editor) editor = getenv("EDITOR");
+    if (!editor) editor = "vi";  // TODO: We /could/ check if different 
+                                 // editors exist.
+    command(editor, matches);    // TODO: And we could be smarter about
+                                 // the syntax of sending files to edit.
+  }
+
+  if (exec)
+    command(exec, matches);
 
   return 0;
 }
 
-int command(const char *cmd, const std::string &match)
+std::string concat(const std::vector<std::string> &);
+
+int command(const char *cmd, const std::vector<std::string> &matches)
 {
-  size_t cmdLen = strlen(cmd);
-  size_t size = cmdLen + match.size() + 3;
+  std::string run;  // The program to run.
 
-  // We can't use std::string /and/ fill it with snprintf, so...
-  std::unique_ptr<char[]> exec(new char[size]);
+  // If the command has a %, expand the matches there; else at the end.
+  if (const char *wild = strchr(cmd, '%'))
+    run = std::string(cmd, wild) + concat(matches) + (wild + 1);
+  else
+    run = cmd + (" " + concat(matches));
 
-  if (const char *wild = strchr(cmd, '%')) {
-    // Expand "prog -a % -b" to "prog -a <match> -b".
-    std::string fmt = std::string(cmd, wild) + "%s" + (wild + 1);
-    snprintf(exec.get(), size, fmt.c_str(), match.c_str());
-  } else {
-    snprintf(exec.get(), size, "%s %s", cmd, match.c_str());
-  }
+  return system(run.c_str());
+}
 
-  return system(exec.get());
+std::string concat(const std::vector<std::string> &vs)
+{
+  std::string ret;
+  for (const std::string &s : vs)
+    ret += s + ' ';
+  if (ret.size() > 1)
+    ret.erase(ret.size() - 1);  // Trailing whitespace.
+  return std::move(ret);
 }
 
 void usage(int ret, const char *fmt=nullptr, ...)
 {
-  FILE *out = (ret == 0) ? stdout : stderr;
-
   if (fmt) {
     va_list va;
     va_start(va, fmt);
-    vfprintf(out, fmt, va);
-    fprintf(out, "\n");
+    vfprintf(stderr, fmt, va);
+    fprintf(stderr, "\n");
     va_end(va);
   }
 
-  fprintf(out, "usage: bfinds [options] file [path...]\n");
-  fprintf(out, "\n");
-  fprintf(out, "options:\n");
-  fprintf(out, "\t--command <cmd> Executes <cmd> for every instance of <file>.\n");
-  fprintf(out, "\t  or -c <cmd>   If <cmd> contains a percent (%), the <file> is inserted there.\n");
-  fprintf(out, "\t                Found files will not be printed. (Useful for piping.)\n");
-  fprintf(out, "\t-<N>            Stop searching after finding <N> matches.\n");
+  puts("usage: bfinds [options] file [path...]");
+  puts("");
+  puts("options:");
+  puts("\t--pre | -P (defualt) Match by prefix.");
+  puts("\t--full | -F     Match by full-name comparison.");
+  puts("\t--regex | -R    Match by regex.");
+  puts("\t--contains | -C Match if a filename contains the target.");
+  puts("\t--command <cmd> Executes <cmd> for every instance of <file>.");
+  puts("\t  or -c <cmd>   If <cmd> contains a percent (%), the <file> is inserted there.");
+  puts("\t                Found files will not be printed. (Useful for piping.)");
+  puts("\t-<N>            Stop searching after finding <N> matches.");
+  puts("\t--execute <cmd> Like --command, only it is run after the entire search");
+  puts("\t  or -x <cmd>   and sends every file all at once.");
 
   exit(ret);
 }

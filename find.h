@@ -3,6 +3,12 @@
 
 #include <deque>
 #include <string>
+#include <memory>
+
+#include "match.h"
+
+#ifndef FIND_H
+#define FIND_H
 
 typedef std::deque<const char *> Edges;
 
@@ -25,6 +31,9 @@ struct Find
   Find();
   ~Find();
 
+  /// Sets the match generator. (By default, match::prefix.)
+  void match_by(match::Gen);
+
   /// Adds a starting point to 'unexplored'.
   void startpoint(const char *);
 
@@ -35,10 +44,10 @@ struct Find
   /// Call repeatedly to get more results.
   bool next(std::string &);
 
-  /// Overload of next() that returns "" instead of false.
-  std::string next();
-
 private:
+  match::Gen matchGenerator = match::prefix;
+  match::Matcher check;  ///< Initialized by next().
+
   // The state of the search:
   const char *path = nullptr;  ///< The path being expanded.
   DIR *d = nullptr;            ///< path's directory.
@@ -47,9 +56,6 @@ private:
   const char *in_ent(struct dirent *);
 };
 
-/// Checks if a file matches the target.
-bool check(const char *, const char *fname);
-
 /// Checks for "." and "..".
 bool is_dot(const char *);
 
@@ -57,4 +63,6 @@ const char *path_tail(const char *p);
 char *path_tail(char *p);
 
 char *path_append(const char *from, const char *to);
+
+#endif
 
