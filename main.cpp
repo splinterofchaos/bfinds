@@ -10,10 +10,13 @@
 #include <unistd.h>
 
 #include <utility>
+#include <list>
 #include <memory>
 #include <algorithm>
 
 #include <thread>
+#include <condition_variable>
+#include <mutex>
 #include <future>
 
 #include "find.h"
@@ -28,6 +31,78 @@ void usage(int ret)
 
 /// Executes a command for "-c cmd".
 int command(const char *cmd, const std::vector<std::string> &matches);
+
+/// AsyncMatches lets us iterate through matches while finding them in
+/// parallel.
+struct AsyncMatches 
+{
+  std::list<std::string> data;
+  std::mutex m;
+  std::condition_variable cv;
+  std::thread worker;
+  bool finished = false;
+  
+  /// An iterator that blocks until the next item has been found.
+  struct Iterator
+  {
+    AsyncMatches &am;
+    std::list<std::string>::iterator it;
+
+    Iterator &operator++ ()
+    {
+      std::unique_lock<std::mutex> l(am.m);
+      am.cv.wait(l, [&]{return std::next(it) != std::end(am.data) || am.finished;});
+      it++;
+    }
+
+    bool operator == (const Iterator &other) {
+      return &am == &other.am && it == other.it;
+    }
+
+    bool operator != (const Iterator &other) {
+      return !(*this == other);
+    }
+
+    std::string &operator * () {
+      return *it;
+    }
+  };
+
+  /// `worker`s function.
+  static int fill_data(AsyncMatches &self, Find &f) {
+    std::string match;
+    while (f.next(match)) {
+      self.m.lock();
+      self.data.push_back(match);
+      self.m.unlock();
+      self.cv.notify_one();
+    }
+
+    // Let the main thread know we're done.
+    self.finished = true;
+    self.cv.notify_one();
+
+    return 1;
+  }
+
+  AsyncMatches(Find &f) : worker(fill_data, std::ref(*this), std::ref(f))
+  {
+  }
+
+  ~AsyncMatches() {
+    worker.join();
+  }
+
+  Iterator begin() {
+    std::unique_lock<std::mutex> l(m);
+    cv.wait(l, [&]{return data.size() || finished;});
+    return {*this, std::begin(data)};
+  }
+
+  Iterator end() {
+    return {*this, std::end(data)};
+  }
+};
 
 int main(int argc, char **argv)
 {
@@ -84,20 +159,8 @@ int main(int argc, char **argv)
   if (!find.has_startpoint())
     find.startpoint(".");
 
-  // We will run the actual file search in another thread in case the user
-  // supplies the -c option; the command can execute while we find the next
-  // file.
-  std::string futMatch;
-  auto do_match = [&]{ return find.next(futMatch); };
-  std::future<bool> found = std::async(do_match);
-
-  std::vector<std::string> matches;  // Store matches here.
-
-  while(found.get()) {
-    std::string match = futMatch;
-    
-    found = std::async(std::launch::async, do_match);
-
+  std::vector<std::string> matches;
+  for (auto &&match : AsyncMatches(find)) {
     if (match[0] == '.' && match[1] == '/')
       match.erase(0, 2);  // I hate that "./" prefix!
 
